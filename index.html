@@ -1,0 +1,1696 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Monocyte Journey: Petualangan Pembuluh Darah</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #ff2e63;
+            --primary-hover: #ff0040;
+            --secondary: #08d9d6;
+            --dark-bg: #120205;
+            --card-bg: rgba(35, 8, 15, 0.88);
+            --border-glow: rgba(255, 46, 99, 0.4);
+            --text-light: #fefefe;
+            --text-sub: #ffb8c6;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+            font-family: 'Poppins', system-ui, -apple-system, sans-serif;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: var(--dark-bg);
+            color: var(--text-light);
+        }
+
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background: #1a0307;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        /* --- UI OVERLAYS & MODALS --- */
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: radial-gradient(circle, rgba(40, 5, 12, 0.75) 0%, rgba(10, 1, 3, 0.92) 100%);
+            backdrop-filter: blur(8px);
+            z-index: 10;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+            padding: 20px;
+        }
+
+        .hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 2px solid var(--primary);
+            box-shadow: 0 0 30px var(--border-glow), inset 0 0 15px rgba(255, 46, 99, 0.15);
+            border-radius: 24px;
+            padding: 30px 35px;
+            text-align: center;
+            max-width: 520px;
+            width: 100%;
+            animation: floatCard 4s ease-in-out infinite alternate;
+        }
+
+        @keyframes floatCard {
+            0% { transform: translateY(0px); }
+            100% { transform: translateY(-8px); }
+        }
+
+        h1 {
+            font-size: 2.2rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #ffffff, #ff758f);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 8px;
+            text-shadow: 0 0 20px rgba(255, 46, 99, 0.5);
+            letter-spacing: 0.5px;
+        }
+
+        .subtitle {
+            font-size: 0.95rem;
+            color: var(--text-sub);
+            margin-bottom: 22px;
+            line-height: 1.5;
+        }
+
+        .input-group {
+            margin-bottom: 18px;
+            text-align: left;
+        }
+
+        .input-group label {
+            display: block;
+            font-size: 0.85rem;
+            color: var(--text-sub);
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+
+        input[type="text"], input[type="password"] {
+            width: 100%;
+            padding: 14px 18px;
+            border-radius: 12px;
+            border: 1.5px solid rgba(255, 46, 99, 0.4);
+            background: rgba(10, 2, 5, 0.7);
+            color: #fff;
+            font-size: 1rem;
+            outline: none;
+            transition: all 0.25s ease;
+        }
+
+        input[type="text"]:focus, input[type="password"]:focus {
+            border-color: var(--secondary);
+            box-shadow: 0 0 12px rgba(8, 217, 214, 0.5);
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #ff2e63, #c9184a);
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            font-size: 1rem;
+            font-weight: 700;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            width: 100%;
+            margin-top: 8px;
+            box-shadow: 0 6px 20px rgba(255, 46, 99, 0.35);
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(255, 46, 99, 0.5);
+            background: linear-gradient(135deg, #ff4d6d, #d90429);
+        }
+
+        .btn:active {
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 184, 198, 0.3);
+            color: var(--text-sub);
+            box-shadow: none;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: var(--secondary);
+            color: #fff;
+            box-shadow: 0 0 15px rgba(8, 217, 214, 0.3);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 10px;
+        }
+
+        /* --- HUD (IN-GAME) --- */
+        #hud {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 5;
+            pointer-events: none;
+        }
+
+        .hud-card {
+            background: rgba(20, 3, 7, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 46, 99, 0.3);
+            padding: 10px 20px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+        }
+
+        .hud-btn {
+            pointer-events: auto;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+
+        .hud-btn:hover {
+            transform: scale(1.05);
+            border-color: var(--secondary);
+        }
+
+        .hud-value {
+            font-size: 1.2rem;
+            font-weight: 800;
+            color: #fff;
+        }
+
+        .hud-label {
+            font-size: 0.75rem;
+            color: var(--text-sub);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
+
+        .progress-bar-bg {
+            width: 100px;
+            height: 10px;
+            background: rgba(255,255,255,0.15);
+            border-radius: 5px;
+            overflow: hidden;
+            margin-top: 4px;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #08d9d6, #00f5d4);
+            transition: width 0.3s ease;
+        }
+
+        /* --- QUIZ SCREEN --- */
+        .quiz-card {
+            max-width: 650px;
+            text-align: left;
+            animation: none;
+        }
+
+        .quiz-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(255, 46, 99, 0.2);
+        }
+
+        .quiz-badge {
+            background: rgba(8, 217, 214, 0.2);
+            color: var(--secondary);
+            border: 1px solid var(--secondary);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 700;
+        }
+
+        .quiz-question {
+            font-size: 1.05rem;
+            color: #fff;
+            line-height: 1.6;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+
+        .quiz-options {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .quiz-option {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1.5px solid rgba(255, 184, 198, 0.2);
+            border-radius: 12px;
+            padding: 12px 18px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.92rem;
+            color: var(--text-light);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .quiz-option:hover {
+            background: rgba(255, 46, 99, 0.15);
+            border-color: var(--primary);
+            transform: translateX(4px);
+        }
+
+        .option-prefix {
+            width: 26px;
+            height: 26px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: 700;
+            font-size: 0.8rem;
+            color: var(--text-sub);
+            flex-shrink: 0;
+        }
+
+        .quiz-option:hover .option-prefix {
+            background: var(--primary);
+            color: #fff;
+        }
+
+        /* --- LEADERBOARD TABLE --- */
+        .table-wrapper {
+            max-height: 260px;
+            overflow-y: auto;
+            margin: 15px 0;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 46, 99, 0.2);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.9rem;
+        }
+
+        th {
+            background: rgba(255, 46, 99, 0.25);
+            color: #fff;
+            padding: 12px 16px;
+            font-weight: 700;
+            position: sticky;
+            top: 0;
+            backdrop-filter: blur(5px);
+        }
+
+        td {
+            padding: 10px 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            color: var(--text-sub);
+        }
+
+        tr:nth-child(even) {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        tr:hover {
+            background: rgba(255, 46, 99, 0.1);
+        }
+
+        .rank-badge {
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            line-height: 24px;
+            text-align: center;
+            border-radius: 50%;
+            font-weight: 700;
+            font-size: 0.8rem;
+        }
+        .rank-1 { background: #ffd700; color: #000; }
+        .rank-2 { background: #c0c0c0; color: #000; }
+        .rank-3 { background: #cd7f32; color: #fff; }
+
+        /* Scrollbar Style */
+        .table-wrapper::-webkit-scrollbar { width: 6px; }
+        .table-wrapper::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
+        .table-wrapper::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 3px; }
+
+        /* Notification Toast */
+        #toast {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: #08d9d6;
+            color: #000;
+            padding: 10px 24px;
+            border-radius: 30px;
+            font-weight: 700;
+            font-size: 0.9rem;
+            box-shadow: 0 5px 20px rgba(8, 217, 214, 0.4);
+            z-index: 100;
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            pointer-events: none;
+        }
+
+        #toast.show {
+            transform: translateX(-50%) translateY(0);
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <!-- HUD IN-GAME -->
+    <div id="hud" class="hidden">
+        <div class="hud-card">
+            <div>
+                <div class="hud-label">Skor Siswa</div>
+                <div class="hud-value" id="score-display">0</div>
+            </div>
+        </div>
+
+        <div class="hud-card">
+            <div>
+                <div class="hud-label">Ukuran Monosit (Ekstravasasi)</div>
+                <div class="progress-bar-bg">
+                    <div class="progress-bar-fill" id="size-bar"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="hud-card">
+            <div>
+                <div class="hud-label">Tingkat Kecepatan</div>
+                <div class="hud-value" id="speed-display" style="color: #08d9d6;">1.0x</div>
+            </div>
+        </div>
+
+        <div class="hud-card">
+            <div>
+                <div class="hud-label">Kesempatan Kuis</div>
+                <div class="hud-value" id="lives-display" style="color: var(--secondary);">3 / 3</div>
+            </div>
+        </div>
+
+        <div class="hud-card hud-btn" id="bgm-btn" onclick="toggleBGM()">
+            <div>
+                <div class="hud-label">Audio</div>
+                <div class="hud-value" style="font-size: 0.95rem; color: #08d9d6;">🎵 Musik: ON</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CANVAS UTAMA -->
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- OVERLAY 1: MENU UTAMA -->
+    <div id="start-screen" class="overlay">
+        <div class="card">
+            <h1>Monocyte Journey</h1>
+            <div class="subtitle">Petualangan Darah Putih Mengarungi Pembuluh Darah & Melawan Kuman!</div>
+            
+            <div class="input-group">
+                <label for="player-name">Nama Lengkap Siswa</label>
+                <input type="text" id="player-name" placeholder="Contoh: Budi Santoso" maxlength="20" autocomplete="off">
+            </div>
+
+            <button class="btn" onclick="startGame()">▶ Mulai Bermain</button>
+            <button class="btn btn-secondary" onclick="openTokenModal()">🏆 Papan Skor (Guru/Siswa)</button>
+        </div>
+    </div>
+
+    <!-- OVERLAY 2: MODAL VERIFIKASI TOKEN -->
+    <div id="token-screen" class="overlay hidden">
+        <div class="card" style="max-width: 400px;">
+            <h2 style="margin-bottom: 10px; color: #ff758f;">Akses Papan Skor</h2>
+            <div class="subtitle">Masukkan Token Rahasia untuk Melihat & Mengunduh Nilai:</div>
+
+            <div class="input-group">
+                <input type="password" id="token-input" placeholder="Masukkan Token (cth: 1234)" style="text-align: center; letter-spacing: 4px; font-size: 1.2rem;">
+            </div>
+
+            <div class="btn-group">
+                <button class="btn btn-secondary" onclick="closeTokenModal()">Batal</button>
+                <button class="btn" onclick="verifyToken()">Masuk</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- OVERLAY 3: PAPAN SKOR / LEADERBOARD -->
+    <div id="leaderboard-screen" class="overlay hidden">
+        <div class="card" style="max-width: 580px;">
+            <h2>🏆 Papan Skor Siswa</h2>
+            <div class="subtitle">Data dicatat secara lokal dan dapat diunduh untuk analisis Rekap Nilai (GSheet/Excel).</div>
+
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 15%;">Rank</th>
+                            <th>Nama Siswa</th>
+                            <th style="width: 20%;">Skor</th>
+                            <th style="width: 30%;">Tanggal</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leaderboard-body">
+                        <!-- Content via JS -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="btn-group">
+                <button class="btn btn-secondary" onclick="closeLeaderboard()">Kembali</button>
+                <button class="btn" onclick="downloadCSV()">📊 Download CSV (GSheet)</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- OVERLAY 4: KUIS IMUNOLOGI DASAR -->
+    <div id="quiz-screen" class="overlay hidden">
+        <div class="card quiz-card">
+            <div class="quiz-header">
+                <span class="quiz-badge">💡 Kuis Imunologi Dasar</span>
+                <span style="font-size: 0.85rem; color: var(--text-sub);" id="quiz-lives-left">Sisa Kesempatan: 3</span>
+            </div>
+            <div class="quiz-question" id="quiz-question-text">
+                Pertanyaan kuis akan ditampilkan di sini...
+            </div>
+            <div class="quiz-options" id="quiz-options-container">
+                <!-- Options via JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- OVERLAY 5: GAME OVER -->
+    <div id="gameover-screen" class="overlay hidden">
+        <div class="card">
+            <h1 style="color: var(--primary);">Game Over</h1>
+            <div class="subtitle" id="gameover-reason">Monosit terinfeksi patogen kuman berbahaya!</div>
+            
+            <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 16px; margin: 15px 0;">
+                <div style="font-size: 0.85rem; color: var(--text-sub);">Skor Akhir Anda</div>
+                <div style="font-size: 2.5rem; font-weight: 800; color: var(--secondary);" id="final-score-display">0</div>
+            </div>
+
+            <div class="btn-group">
+                <button class="btn btn-secondary" onclick="returnToMenu()">Menu Utama</button>
+                <button class="btn" onclick="restartGame()">🔄 Main Lagi</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST NOTIFICATION -->
+    <div id="toast">Pesan Notifikasi</div>
+</div>
+
+<script>
+    /* ==========================================================================
+       0. WEB AUDIO API SYNTHESIZER (SOUND EFFECTS MENCEKAM & BGM GAME)
+       ========================================================================== */
+    let audioCtx = null;
+    let bgmEnabled = true;
+    let bgmInterval = null;
+    let bgmStep = 0;
+
+    // Melodi & Bassline Chiptune Arcade untuk Suasana Game
+    const melodyNotes = [
+        261.63, 329.63, 392.00, 523.25, 392.00, 329.63, 293.66, 349.23,
+        440.00, 523.25, 440.00, 349.23, 329.63, 392.00, 523.25, 659.25,
+        523.25, 392.00, 293.66, 349.23, 392.00, 440.00, 392.00, 293.66
+    ];
+    const bassNotes = [
+        130.81, 130.81, 146.83, 146.83, 164.81, 164.81, 174.61, 174.61
+    ];
+
+    function initAudio() {
+        if (!audioCtx) {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            audioCtx = new AudioContext();
+        }
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
+    }
+
+    // Generator Musik Latar Prosedural (BGM Synthesizer)
+    function playBGMStep() {
+        if (!audioCtx || !bgmEnabled || gameState !== 'PLAYING') return;
+
+        try {
+            const now = audioCtx.currentTime;
+
+            // 1. Bassline Synthesizer (Pulse / Triangle)
+            if (bgmStep % 2 === 0) {
+                const bassFreq = bassNotes[(Math.floor(bgmStep / 2)) % bassNotes.length];
+                const bassOsc = audioCtx.createOscillator();
+                const bassGain = audioCtx.createGain();
+                bassOsc.type = 'triangle';
+                bassOsc.frequency.setValueAtTime(bassFreq, now);
+
+                bassGain.gain.setValueAtTime(0.07, now);
+                bassGain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+
+                bassOsc.connect(bassGain);
+                bassGain.connect(audioCtx.destination);
+                bassOsc.start(now);
+                bassOsc.stop(now + 0.22);
+            }
+
+            // 2. Melody Lead Synth (Soft Sine Wave)
+            const melFreq = melodyNotes[bgmStep % melodyNotes.length];
+            const melOsc = audioCtx.createOscillator();
+            const melGain = audioCtx.createGain();
+            melOsc.type = 'sine';
+            melOsc.frequency.setValueAtTime(melFreq, now);
+
+            melGain.gain.setValueAtTime(0.045, now);
+            melGain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+
+            melOsc.connect(melGain);
+            melGain.connect(audioCtx.destination);
+            melOsc.start(now);
+            melOsc.stop(now + 0.18);
+
+            // 3. Rhythm Percussion / Soft Hi-Hat Noise
+            if (bgmStep % 4 === 2) {
+                const bufferSize = Math.floor(audioCtx.sampleRate * 0.03);
+                const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = Math.random() * 2 - 1;
+                }
+                const noise = audioCtx.createBufferSource();
+                noise.buffer = buffer;
+                const noiseGain = audioCtx.createGain();
+                noiseGain.gain.setValueAtTime(0.015, now);
+                noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
+
+                noise.connect(noiseGain);
+                noiseGain.connect(audioCtx.destination);
+                noise.start(now);
+            }
+
+            bgmStep++;
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    function startBGM() {
+        stopBGM();
+        bgmStep = 0;
+        bgmInterval = setInterval(playBGMStep, 175); // Tempo energetic ~170 BPM
+    }
+
+    function stopBGM() {
+        if (bgmInterval) {
+            clearInterval(bgmInterval);
+            bgmInterval = null;
+        }
+    }
+
+    function toggleBGM() {
+        initAudio();
+        bgmEnabled = !bgmEnabled;
+        const btn = document.getElementById('bgm-btn');
+        if (btn) {
+            btn.querySelector('.hud-value').innerText = bgmEnabled ? '🎵 Musik: ON' : '🔇 Musik: OFF';
+            btn.querySelector('.hud-value').style.color = bgmEnabled ? '#08d9d6' : '#ff758f';
+        }
+        if (!bgmEnabled) {
+            stopBGM();
+        } else if (gameState === 'PLAYING') {
+            startBGM();
+        }
+    }
+
+    // Suara Mencekam 1: Makan Kuman Kecil (Organic Bio-Absorption Squishy Pitch-Drop)
+    function playEatSmallGermSound() {
+        if (!audioCtx) return;
+        try {
+            const now = audioCtx.currentTime;
+            
+            // Oscillator 1: Sawtooth dengan pitch drop cepat
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            const filter = audioCtx.createBiquadFilter();
+
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(240, now);
+            osc.frequency.exponentialRampToValueAtTime(40, now + 0.22);
+
+            // Filter Lowpass untuk memberikan tekstur lendir/basah mencekam
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(900, now);
+            filter.frequency.exponentialRampToValueAtTime(100, now + 0.22);
+
+            gain.gain.setValueAtTime(0.35, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+
+            osc.connect(filter);
+            filter.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            osc.start(now);
+            osc.stop(now + 0.22);
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    // Suara Mencekam 2: Dimakan Kuman Besar (Terrifying Horror Sting & Dissonant Sub-Bass)
+    function playBigGermHitSound() {
+        if (!audioCtx) return;
+        try {
+            const now = audioCtx.currentTime;
+
+            // 1. Heavy Sub-Bass Drop (Menggetarkan)
+            const sub = audioCtx.createOscillator();
+            const subGain = audioCtx.createGain();
+            sub.type = 'triangle';
+            sub.frequency.setValueAtTime(130, now);
+            sub.frequency.exponentialRampToValueAtTime(20, now + 0.9);
+
+            subGain.gain.setValueAtTime(0.7, now);
+            subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.9);
+
+            sub.connect(subGain);
+            subGain.connect(audioCtx.destination);
+            sub.start(now);
+            sub.stop(now + 0.9);
+
+            // 2. Akord Disonan Horor (Tritone / Dark Horror Screech)
+            const creepyFreqs = [130.81, 138.59, 185.00, 277.18]; // C3, C#3, F#3, C#4
+            creepyFreqs.forEach(freq => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                const filter = audioCtx.createBiquadFilter();
+
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(freq, now);
+                osc.frequency.linearRampToValueAtTime(freq * 0.65, now + 0.8);
+
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(2200, now);
+                filter.frequency.exponentialRampToValueAtTime(180, now + 0.8);
+
+                gain.gain.setValueAtTime(0.22, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
+
+                osc.connect(filter);
+                filter.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc.start(now);
+                osc.stop(now + 0.8);
+            });
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    // Suara Mencekam 3: Peringatan Kuman Besar Muncul di Layar (Eerie Low Growl)
+    function playBigGermSpawnSound() {
+        if (!audioCtx) return;
+        try {
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            const filter = audioCtx.createBiquadFilter();
+
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(55, now); // Low A1
+            osc.frequency.linearRampToValueAtTime(45, now + 0.4);
+
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(300, now);
+
+            gain.gain.setValueAtTime(0.18, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+
+            osc.connect(filter);
+            filter.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            osc.start(now);
+            osc.stop(now + 0.4);
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    /* ==========================================================================
+       1. GAME STATE & SYSTEM CONFIGURATION
+       ========================================================================== */
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    let gameState = 'START'; // 'START', 'PLAYING', 'QUIZ', 'GAMEOVER'
+    let animationId = null;
+    let playerName = "";
+    let score = 0;
+    let quizLives = 3;
+    let baseSpeed = 2.0; // Dimulai lebih lambat agar siswa mudah beradaptasi
+    let gameSpeed = 2.0;
+    let distanceTraveled = 0;
+    let currentQuizIndex = 0;
+
+    // Bank Soal Imunologi Dasar (Pilihan Ganda 5 Opsi)
+    const quizBank = [
+        {
+            q: "Fungsi utama Monosit dalam sistem kekebalan tubuh (imunitas) manusia adalah...",
+            options: [
+                "Mengangkut oksigen ke seluruh sel tubuh",
+                "Fagositosis jaringan mati dan mikroorganisme patogen",
+                "Membekukan darah saat terjadi luka terbuka",
+                "Memproduksi hormon insulin dalam darah",
+                "Menghasilkan histamin saat reaksi alergi"
+            ],
+            answer: 1
+        },
+        {
+            q: "Monosit yang bermigrasi dari pembuluh darah dan menetap di dalam jaringan tubuh akan berkembang menjadi...",
+            options: [
+                "Eritrosit",
+                "Trombosit",
+                "Makrofag",
+                "Limfosit B",
+                "Basofil"
+            ],
+            answer: 2
+        },
+        {
+            q: "Proses keluarnya sel darah putih (seperti monosit) menembus dinding kapiler darah menuju jaringan yang terinfeksi disebut...",
+            options: [
+                "Aglutinasi",
+                "Diapedesis (Ekstravasasi)",
+                "Hemolisis",
+                "Oksigenasi",
+                "Fibrinolisis"
+            ],
+            answer: 1
+        },
+        {
+            q: "Sistem kekebalan tubuh manusia yang didapatkan sejak lahir dan merespon patogen secara umum/non-spesifik dinamakan...",
+            options: [
+                "Imunitas Adaptif",
+                "Imunitas Spesifik",
+                "Imunitas Bawaan (Innate)",
+                "Imunitas Pasif Buatan",
+                "Imunitas Humoral"
+            ],
+            answer: 2
+        },
+        {
+            q: "Molekul protein spesifik yang dihasilkan oleh Limfosit B untuk menetralisir antigen musuh disebut...",
+            options: [
+                "Antigen",
+                "Antibodi (Imunoglobulin)",
+                "Histamin",
+                "Hemoglobin",
+                "Fibrinogen"
+            ],
+            answer: 1
+        },
+        {
+            q: "Organ limfoid utama yang menjadi tempat pematangan dan diferensiasi Sel T adalah...",
+            options: [
+                "Sumsum Tulang",
+                "Kelenjar Timus",
+                "Nodus Limfa",
+                "Organ Hati",
+                "Pankreas"
+            ],
+            answer: 1
+        },
+        {
+            q: "Komponen seluler darah yang tidak memiliki inti sel (*anukleat*) dan berbentuk bikonkaf adalah...",
+            options: [
+                "Monosit",
+                "Limfosit",
+                "Eritrosit (Sel Darah Merah)",
+                "Neutrofil",
+                "Makrofag"
+            ],
+            answer: 2
+        }
+    ];
+
+    // Responsive Canvas
+    function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    /* ==========================================================================
+       2. BIOLOGICAL ANIMATION CLASSES (MONOCYTE, ERYTHROCYTE, GERMS, PARTICLES)
+       ========================================================================== */
+
+    // Player Object: Monocyte (Darah Putih)
+    class Monocyte {
+        constructor() {
+            this.x = canvas.width * 0.22;
+            this.y = canvas.height / 2;
+            this.baseRadius = 20;
+            this.radius = this.baseRadius;
+            this.maxRadius = 42; // Batas keluar pembuluh darah (diapedesis)
+            this.velocity = 0;
+            this.gravity = 0.32; // Gravitasi lebih ramah pemula
+            this.jumpStrength = -6.8; // Lompatan lebih halus
+            this.pulsePhase = 0;
+            this.membraneNodes = 12;
+            this.nodeOffsets = Array.from({length: 12}, () => Math.random() * 3 - 1.5);
+        }
+
+        draw() {
+            ctx.save();
+            ctx.translate(this.x, this.y);
+
+            this.pulsePhase += 0.06;
+
+            // 1. Outer Glow/Pseudopodia Aura
+            let auraGradient = ctx.createRadialGradient(0, 0, this.radius * 0.5, 0, 0, this.radius + 10);
+            auraGradient.addColorStop(0, 'rgba(230, 245, 255, 0.9)');
+            auraGradient.addColorStop(0.7, 'rgba(180, 225, 255, 0.4)');
+            auraGradient.addColorStop(1, 'rgba(180, 225, 255, 0)');
+
+            ctx.fillStyle = auraGradient;
+            ctx.beginPath();
+            ctx.arc(0, 0, this.radius + 12, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 2. Dynamic Membrane Cytoplasm (Amuba / Pseudopodia shape)
+            ctx.beginPath();
+            for (let i = 0; i < this.membraneNodes; i++) {
+                let angle = (i / this.membraneNodes) * Math.PI * 2;
+                let wave = Math.sin(this.pulsePhase + i * 0.8) * 2.5 + this.nodeOffsets[i];
+                let r = this.radius + wave;
+                let nx = Math.cos(angle) * r;
+                let ny = Math.sin(angle) * r;
+
+                if (i === 0) ctx.moveTo(nx, ny);
+                else ctx.lineTo(nx, ny);
+            }
+            ctx.closePath();
+
+            // Cytoplasm Gradient (Pale bluish-grey white cell)
+            let cytoGrad = ctx.createRadialGradient(-this.radius * 0.3, -this.radius * 0.3, 2, 0, 0, this.radius);
+            cytoGrad.addColorStop(0, '#ffffff');
+            cytoGrad.addColorStop(0.6, '#e0f2fe');
+            cytoGrad.addColorStop(1, '#bae6fd');
+
+            ctx.fillStyle = cytoGrad;
+            ctx.lineWidth = 2.5;
+            ctx.strokeStyle = '#38bdf8';
+            ctx.fill();
+            ctx.stroke();
+
+            // 3. Kidney-Shaped Nucleus (Inti Sel Khas Monosit)
+            ctx.save();
+            ctx.rotate(-Math.PI / 6);
+            ctx.fillStyle = '#4c1d95'; // Purple-indigo nucleus
+            ctx.beginPath();
+            let nr = this.radius * 0.55;
+            ctx.arc(-nr * 0.2, 0, nr, 0.3 * Math.PI, 1.7 * Math.PI, false);
+            ctx.quadraticCurveTo(nr * 0.5, 0, -nr * 0.2, nr * Math.sin(0.3 * Math.PI));
+            ctx.fill();
+
+            // Nucleus Inner Texture/Chromatin
+            ctx.fillStyle = '#2e1065';
+            ctx.beginPath();
+            ctx.arc(-nr * 0.3, -nr * 0.2, nr * 0.3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+
+            ctx.restore();
+        }
+
+        update() {
+            this.velocity += this.gravity;
+
+            // Kontrol kemudi halus dengan pergerakan kursor mouse / sentuhan jari di HP (Touch & Mouse Steering)
+            if (mouseControlActive && gameState === 'PLAYING') {
+                let dy = targetMouseY - this.y;
+                this.velocity += dy * 0.028; // Meningkatkan respon kontrol sentuhan jari di HP
+                this.velocity *= 0.90; // Redaman pergerakan agar tetap mulus dan presisi
+            }
+
+            this.y += this.velocity;
+
+            // Batas Atas Dinding Pembuluh Darah agar Monosit tidak tersangkut
+            let minTop = 45 + this.radius;
+            if (this.y < minTop) {
+                this.y = minTop;
+                if (this.velocity < 0) this.velocity = 0;
+            }
+        }
+
+        jump() {
+            this.velocity = this.jumpStrength;
+        }
+
+        grow(amount) {
+            this.radius += amount;
+            if (this.radius >= this.maxRadius) {
+                triggerDiapedesis();
+            }
+            updateHUD();
+        }
+    }
+
+    // Background Erythrocyte (Sel Darah Merah Bikonkaf)
+    class Erythrocyte {
+        constructor() {
+            this.reset(true);
+        }
+
+        reset(initial = false) {
+            this.x = initial ? Math.random() * canvas.width : canvas.width + Math.random() * 200;
+            this.y = Math.random() * (canvas.height - 120) + 60;
+            this.radius = Math.random() * 12 + 16;
+            this.speed = gameSpeed * (0.6 + Math.random() * 0.3);
+            this.rotation = Math.random() * Math.PI * 2;
+            this.rotSpeed = (Math.random() - 0.5) * 0.02;
+            this.flatten = Math.random() * 0.25 + 0.65; // Aspect ratio for biconcave perspective
+        }
+
+        draw() {
+            ctx.save();
+            ctx.translate(this.x, this.y);
+            ctx.rotate(this.rotation);
+
+            // Red Blood Cell Body
+            ctx.beginPath();
+            ctx.ellipse(0, 0, this.radius, this.radius * this.flatten, 0, 0, Math.PI * 2);
+            
+            let redGrad = ctx.createRadialGradient(-this.radius*0.2, -this.radius*0.2, 2, 0, 0, this.radius);
+            redGrad.addColorStop(0, '#ff4d6d');
+            redGrad.addColorStop(0.5, '#c9184a');
+            redGrad.addColorStop(1, '#800f2f');
+
+            ctx.fillStyle = redGrad;
+            ctx.fill();
+            ctx.lineWidth = 1.5;
+            ctx.strokeStyle = '#590d22';
+            ctx.stroke();
+
+            // Center Dimple (Biconcave Impression)
+            ctx.beginPath();
+            ctx.ellipse(0, 0, this.radius * 0.45, this.radius * 0.3 * this.flatten, 0, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(80, 5, 20, 0.5)';
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        update() {
+            this.x -= this.speed;
+            this.rotation += this.rotSpeed;
+            if (this.x + this.radius * 2 < 0) {
+                this.reset();
+            }
+        }
+    }
+
+    // Germ / Bacteria Object (Small = Edible, Big = Dangerous Enemy)
+    class Germ {
+        constructor(isEnemy = false) {
+            this.x = canvas.width + 60;
+            this.y = Math.random() * (canvas.height - 180) + 90;
+            this.isEnemy = isEnemy;
+            this.radius = isEnemy ? Math.random() * 10 + 28 : Math.random() * 4 + 10;
+            this.speed = gameSpeed + (Math.random() * 0.8);
+            this.rotation = 0;
+            this.spikeCount = isEnemy ? 10 : 6;
+            this.pulse = Math.random() * 10;
+        }
+
+        draw() {
+            ctx.save();
+            ctx.translate(this.x, this.y);
+            this.rotation += this.isEnemy ? -0.03 : 0.02;
+            this.pulse += 0.08;
+            ctx.rotate(this.rotation);
+
+            let outerR = this.radius + Math.sin(this.pulse) * 1.5;
+
+            // Germ spikes / Flagella render
+            ctx.beginPath();
+            for (let i = 0; i < this.spikeCount; i++) {
+                let angle = (i / this.spikeCount) * Math.PI * 2;
+                let sx = Math.cos(angle) * (outerR + (this.isEnemy ? 7 : 4));
+                let sy = Math.sin(angle) * (outerR + (this.isEnemy ? 7 : 4));
+                
+                ctx.lineTo(sx, sy);
+
+                let nextAngle = angle + (Math.PI / this.spikeCount);
+                let mx = Math.cos(nextAngle) * (outerR - 2);
+                let my = Math.sin(nextAngle) * (outerR - 2);
+                ctx.lineTo(mx, my);
+            }
+            ctx.closePath();
+
+            if (this.isEnemy) {
+                // Enemy Pathogen: Dark Toxic Purple/Red
+                let gGrad = ctx.createRadialGradient(0, 0, 3, 0, 0, outerR);
+                gGrad.addColorStop(0, '#ff0055');
+                gGrad.addColorStop(0.7, '#7209b7');
+                gGrad.addColorStop(1, '#3a0ca3');
+                ctx.fillStyle = gGrad;
+                ctx.strokeStyle = '#ff2e63';
+                ctx.lineWidth = 2.5;
+            } else {
+                // Edible Small Germ: Green Microbe
+                let gGrad = ctx.createRadialGradient(0, 0, 2, 0, 0, outerR);
+                gGrad.addColorStop(0, '#ccff33');
+                gGrad.addColorStop(0.8, '#38b000');
+                gGrad.addColorStop(1, '#007200');
+                ctx.fillStyle = gGrad;
+                ctx.strokeStyle = '#70e000';
+                ctx.lineWidth = 1.5;
+            }
+
+            ctx.fill();
+            ctx.stroke();
+
+            // Eyes / Nucleolus texture for biological touch
+            if (this.isEnemy) {
+                ctx.fillStyle = '#ffff00';
+                ctx.beginPath();
+                ctx.arc(-outerR * 0.3, -outerR * 0.2, 3, 0, Math.PI * 2);
+                ctx.arc(outerR * 0.3, -outerR * 0.2, 3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            ctx.restore();
+        }
+
+        update() {
+            this.x -= this.speed;
+        }
+    }
+
+    // Burst Particle FX
+    class Particle {
+        constructor(x, y, color) {
+            this.x = x;
+            this.y = y;
+            this.color = color;
+            this.radius = Math.random() * 4 + 2;
+            this.vx = (Math.random() - 0.5) * 6;
+            this.vy = (Math.random() - 0.5) * 6;
+            this.alpha = 1;
+        }
+
+        draw() {
+            ctx.save();
+            ctx.globalAlpha = this.alpha;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+            ctx.fillStyle = this.color;
+            ctx.fill();
+            ctx.restore();
+        }
+
+        update() {
+            this.x += this.vx;
+            this.y += this.vy;
+            this.alpha -= 0.03;
+        }
+    }
+
+    /* ==========================================================================
+       3. ENVIRONMENT: BLOOD VESSEL & HEART / CAPILLARY SCROLLING
+       ========================================================================== */
+    let player = new Monocyte();
+    let germs = [];
+    let erythrocytes = [];
+    let particles = [];
+
+    function initErythrocytes() {
+        erythrocytes = [];
+        for (let i = 0; i < 18; i++) {
+            erythrocytes.push(new Erythrocyte());
+        }
+    }
+
+    function drawBloodVesselEnvironment() {
+        distanceTraveled += gameSpeed * 0.15;
+
+        // Base Blood Fluid Color
+        ctx.fillStyle = '#1c0307';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Vessel Walls (Endothelium Tissue Top & Bottom)
+        let wallHeight = 45;
+        let waveFreq = 0.008;
+
+        // Top Endothelium Wall
+        ctx.fillStyle = '#4a040e';
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        for (let x = 0; x <= canvas.width; x += 30) {
+            let y = wallHeight + Math.sin((x + distanceTraveled * 8) * waveFreq) * 12;
+            ctx.lineTo(x, y);
+        }
+        ctx.lineTo(canvas.width, 0);
+        ctx.fill();
+
+        // Bottom Endothelium Wall
+        ctx.beginPath();
+        ctx.moveTo(0, canvas.height);
+        for (let x = 0; x <= canvas.width; x += 30) {
+            let y = canvas.height - wallHeight - Math.sin((x + distanceTraveled * 8) * waveFreq) * 12;
+            ctx.lineTo(x, y);
+        }
+        ctx.lineTo(canvas.width, canvas.height);
+        ctx.fill();
+
+        // Pulsing Vessel Glow Borders
+        ctx.strokeStyle = 'rgba(255, 46, 99, 0.4)';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        // Dynamic Environmental Text (Kapiler Darah vs Ruang Jantung)
+        let zoneCycle = Math.floor(distanceTraveled / 400) % 2;
+        ctx.save();
+        ctx.fillStyle = "rgba(255, 255, 255, 0.04)";
+        ctx.font = "800 60px 'Poppins', sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+
+        if (zoneCycle === 0) {
+            ctx.fillText("ZONA KAPILER DARAH", canvas.width / 2, canvas.height / 2);
+        } else {
+            ctx.fillText("LINTASAN RUANG JANTUNG", canvas.width / 2, canvas.height / 2);
+        }
+        ctx.restore();
+    }
+
+    /* ==========================================================================
+       4. GAME MECHANICS & COLLISION LOGIC
+       ========================================================================== */
+
+    function updateDifficulty() {
+        // Kecepatan bertambah secara bertahap seiring jarak tempuh (maksimal 5.2x)
+        let speedMultiplier = 1 + (distanceTraveled / 600);
+        gameSpeed = Math.min(baseSpeed * speedMultiplier, 5.2);
+
+        // Update indikator UI Kecepatan pada HUD
+        let speedDisplay = (gameSpeed / baseSpeed).toFixed(1) + "x";
+        let speedEl = document.getElementById('speed-display');
+        if (speedEl) speedEl.innerText = speedDisplay;
+    }
+
+    function spawnGerms() {
+        // Frekuensi kemunculan kuman meningkat perlahan seiring durasi main
+        let spawnChance = Math.min(0.016 + (distanceTraveled * 0.000015), 0.035);
+
+        if (Math.random() < spawnChance) {
+            // Rasio kuman musuh besar berawal sangat sedikit (8%) lalu naik bertahap hingga 35%
+            let enemyRatio = Math.min(0.08 + (distanceTraveled * 0.0002), 0.35);
+            let isEnemy = Math.random() < enemyRatio;
+            
+            if (isEnemy) {
+                playBigGermSpawnSound();
+            }
+
+            germs.push(new Germ(isEnemy));
+        }
+    }
+
+    function triggerDiapedesis() {
+        // Monosit bertambah besar dan keluar dari pembuluh darah (Aturan 2)
+        score += 50;
+        player.radius = player.baseRadius; // Reset ukuran monosit kembali kecil
+        showToast("✨ Ekstravasasi Berhasil! Monosit menembus jaringan (+50 Skor)");
+
+        // Spawn particle burst
+        for (let i = 0; i < 20; i++) {
+            particles.push(new Particle(player.x, player.y, '#08d9d6'));
+        }
+    }
+
+    function createParticleBurst(x, y, color) {
+        for (let i = 0; i < 12; i++) {
+            particles.push(new Particle(x, y, color));
+        }
+    }
+
+    function checkCollisions() {
+        // Bottom / Top Wall Collisions
+        if (player.y + player.radius >= canvas.height - 40) {
+            handleHit();
+            return;
+        }
+
+        // Germ Collisions
+        for (let i = germs.length - 1; i >= 0; i--) {
+            let g = germs[i];
+            let dx = player.x - g.x;
+            let dy = player.y - g.y;
+            let dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist < player.radius + g.radius) {
+                if (!g.isEnemy) {
+                    // Makan Kuman Kecil -> Skor & Monosit Membesar
+                    score += 10;
+                    player.grow(1.8);
+                    createParticleBurst(g.x, g.y, '#70e000');
+                    playEatSmallGermSound();
+                    germs.splice(i, 1);
+                } else {
+                    // Dimakan Kuman Musuh Lebih Besar -> Pemicu Kuis & Suara Mencekam
+                    createParticleBurst(g.x, g.y, '#ff2e63');
+                    playBigGermHitSound();
+                    handleHit();
+                    break;
+                }
+            }
+        }
+    }
+
+    function handleHit() {
+        gameState = 'QUIZ';
+        stopBGM();
+        cancelAnimationFrame(animationId);
+
+        if (quizLives > 0) {
+            triggerQuizModal();
+        } else {
+            triggerGameOver("Kesempatan kuis Anda telah habis!");
+        }
+    }
+
+    /* ==========================================================================
+       5. MAIN GAME LOOP
+       ========================================================================== */
+
+    function gameLoop() {
+        if (gameState !== 'PLAYING') return;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        updateDifficulty();
+
+        // 1. Draw Vessel Background
+        drawBloodVesselEnvironment();
+
+        // 2. Render Erythrocytes
+        for (let e of erythrocytes) {
+            e.update();
+            e.draw();
+        }
+
+        // 3. Render Germs
+        spawnGerms();
+        for (let i = germs.length - 1; i >= 0; i--) {
+            germs[i].update();
+            germs[i].draw();
+            if (germs[i].x < -80) germs.splice(i, 1);
+        }
+
+        // 4. Render Particle FX
+        for (let i = particles.length - 1; i >= 0; i--) {
+            particles[i].update();
+            particles[i].draw();
+            if (particles[i].alpha <= 0) particles.splice(i, 1);
+        }
+
+        // 5. Update & Render Player Monocyte
+        player.update();
+        player.draw();
+
+        // 6. Check Collisions
+        checkCollisions();
+
+        animationId = requestAnimationFrame(gameLoop);
+    }
+
+    /* ==========================================================================
+       6. USER CONTROLS & HUD MANAGERS
+       ========================================================================== */
+
+    let mouseControlActive = false;
+    let targetMouseY = window.innerHeight / 2;
+
+    function handlePlayerAction() {
+        initAudio(); // Activate Web Audio API context
+        if (gameState === 'PLAYING') {
+            player.jump();
+        }
+    }
+
+    // Keyboard controls (Space, Arrow Up, W)
+    window.addEventListener('keydown', (e) => {
+        initAudio();
+        if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') {
+            e.preventDefault();
+            handlePlayerAction();
+        }
+    });
+
+    // Window Mouse Click
+    window.addEventListener('mousedown', (e) => {
+        initAudio();
+        if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT' || e.target.closest('.card')) {
+            return;
+        }
+        handlePlayerAction();
+    });
+
+    // Window Mouse Move
+    window.addEventListener('mousemove', (e) => {
+        targetMouseY = e.clientY;
+        mouseControlActive = true;
+    });
+
+    // Touch controls - Mendukung sentuhan & geseran jari (Touch Drag) di layar HP
+    window.addEventListener('touchstart', (e) => {
+        initAudio();
+        if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT' || e.target.closest('.card')) {
+            return;
+        }
+        if (gameState === 'PLAYING' && e.touches.length > 0) {
+            e.preventDefault();
+            targetMouseY = e.touches[0].clientY;
+            mouseControlActive = true;
+            handlePlayerAction();
+        }
+    }, { passive: false });
+
+    window.addEventListener('touchmove', (e) => {
+        if (gameState === 'PLAYING' && e.touches.length > 0) {
+            e.preventDefault();
+            targetMouseY = e.touches[0].clientY;
+            mouseControlActive = true;
+        }
+    }, { passive: false });
+
+    function updateHUD() {
+        document.getElementById('score-display').innerText = score;
+        document.getElementById('lives-display').innerText = `${quizLives} / 3`;
+
+        // Monocyte Size Bar Progress (%)
+        let progress = ((player.radius - player.baseRadius) / (player.maxRadius - player.baseRadius)) * 100;
+        document.getElementById('size-bar').style.width = `${Math.min(Math.max(progress, 0), 100)}%`;
+    }
+
+    /* ==========================================================================
+       7. QUIZ & GAME FLOW CONTROLLER
+       ========================================================================== */
+
+    function startGame() {
+        let inputName = document.getElementById('player-name').value.trim();
+        if (!inputName) {
+            showToast("⚠️ Harap masukkan Nama Lengkap Siswa!");
+            return;
+        }
+        playerName = inputName;
+
+        document.getElementById('start-screen').classList.add('hidden');
+        document.getElementById('hud').classList.remove('hidden');
+
+        score = 0;
+        quizLives = 3;
+        distanceTraveled = 0;
+        baseSpeed = 2.0;
+        gameSpeed = 2.0;
+        player = new Monocyte();
+        germs = [];
+        particles = [];
+        initErythrocytes();
+
+        updateHUD();
+        gameState = 'PLAYING';
+        if (bgmEnabled) startBGM();
+        gameLoop();
+    }
+
+    function triggerQuizModal() {
+        document.getElementById('quiz-lives-left').innerText = `Sisa Kesempatan: ${quizLives}`;
+        
+        // Select random question from bank
+        currentQuizIndex = Math.floor(Math.random() * quizBank.length);
+        let qData = quizBank[currentQuizIndex];
+
+        document.getElementById('quiz-question-text').innerText = qData.q;
+        let optionsContainer = document.getElementById('quiz-options-container');
+        optionsContainer.innerHTML = '';
+
+        let prefixes = ['A', 'B', 'C', 'D', 'E'];
+        qData.options.forEach((opt, idx) => {
+            let optEl = document.createElement('div');
+            optEl.className = 'quiz-option';
+            optEl.innerHTML = `
+                <div class="option-prefix">${prefixes[idx]}</div>
+                <div>${opt}</div>
+            `;
+            optEl.onclick = () => submitQuizAnswer(idx === qData.answer);
+            optionsContainer.appendChild(optEl);
+        });
+
+        document.getElementById('quiz-screen').classList.remove('hidden');
+    }
+
+    function submitQuizAnswer(isCorrect) {
+        document.getElementById('quiz-screen').classList.add('hidden');
+
+        if (isCorrect) {
+            quizLives--;
+            showToast("✅ Jawaban Benar! Anda kembali ke lintasan darah.");
+            
+            // Safe Revive Position Reset
+            player.y = canvas.height / 2;
+            player.velocity = 0;
+            player.radius = player.baseRadius;
+            germs = []; // Clear current pathogens
+
+            updateHUD();
+            gameState = 'PLAYING';
+            if (bgmEnabled) startBGM();
+            gameLoop();
+        } else {
+            quizLives--;
+            showToast("❌ Jawaban Salah!");
+            
+            if (quizLives > 0) {
+                setTimeout(triggerQuizModal, 600);
+            } else {
+                triggerGameOver("Gagal menjawab kuis imunologi.");
+            }
+        }
+    }
+
+    function triggerGameOver(reason) {
+        stopBGM();
+        saveStudentScore(playerName, score);
+        document.getElementById('gameover-reason').innerText = reason;
+        document.getElementById('final-score-display').innerText = score;
+        document.getElementById('hud').classList.add('hidden');
+        document.getElementById('gameover-screen').classList.remove('hidden');
+        gameState = 'GAMEOVER';
+    }
+
+    function restartGame() {
+        document.getElementById('gameover-screen').classList.add('hidden');
+        document.getElementById('hud').classList.remove('hidden');
+
+        score = 0;
+        quizLives = 3;
+        distanceTraveled = 0;
+        baseSpeed = 2.0;
+        gameSpeed = 2.0;
+        player = new Monocyte();
+        germs = [];
+        particles = [];
+        initErythrocytes();
+
+        updateHUD();
+        gameState = 'PLAYING';
+        if (bgmEnabled) startBGM();
+        gameLoop();
+    }
+
+    function returnToMenu() {
+        stopBGM();
+        document.getElementById('gameover-screen').classList.add('hidden');
+        document.getElementById('start-screen').classList.remove('hidden');
+        gameState = 'START';
+    }
+
+    /* ==========================================================================
+       8. LEADERBOARD, LOCALSTORAGE & CSV EXPORT (GSHEET READY)
+       ========================================================================== */
+
+    function saveStudentScore(name, finalScore) {
+        let scores = JSON.parse(localStorage.getItem('monocyte_game_scores') || '[]');
+        let today = new Date().toLocaleDateString('id-ID', {
+            day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+        });
+
+        scores.push({ name: name, score: finalScore, date: today });
+        scores.sort((a, b) => b.score - a.score);
+        
+        // Keep top 20 entries
+        localStorage.setItem('monocyte_game_scores', JSON.stringify(scores.slice(0, 20)));
+    }
+
+    function openTokenModal() {
+        document.getElementById('token-input').value = '';
+        document.getElementById('token-screen').classList.remove('hidden');
+    }
+
+    function closeTokenModal() {
+        document.getElementById('token-screen').classList.add('hidden');
+    }
+
+    function verifyToken() {
+        let token = document.getElementById('token-input').value.trim();
+        if (token === "1234") {
+            closeTokenModal();
+            renderLeaderboardTable();
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('leaderboard-screen').classList.remove('hidden');
+        } else {
+            showToast("🔒 Token Salah! (Gunakan token: 1234)");
+        }
+    }
+
+    function renderLeaderboardTable() {
+        let scores = JSON.parse(localStorage.getItem('monocyte_game_scores') || '[]');
+        let tbody = document.getElementById('leaderboard-body');
+        tbody.innerHTML = '';
+
+        if (scores.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--text-sub);">Belum ada data nilai siswa.</td></tr>`;
+            return;
+        }
+
+        scores.forEach((item, index) => {
+            let rankClass = index === 0 ? 'rank-1' : index === 1 ? 'rank-2' : index === 2 ? 'rank-3' : '';
+            let row = `
+                <tr>
+                    <td><span class="rank-badge ${rankClass}">${index + 1}</span></td>
+                    <td style="font-weight: 600; color: #fff;">${escapeHTML(item.name)}</td>
+                    <td style="color: var(--secondary); font-weight: 700;">${item.score}</td>
+                    <td style="font-size: 0.8rem;">${item.date}</td>
+                </tr>
+            `;
+            tbody.innerHTML += row;
+        });
+    }
+
+    function closeLeaderboard() {
+        document.getElementById('leaderboard-screen').classList.add('hidden');
+        document.getElementById('start-screen').classList.remove('hidden');
+    }
+
+    function downloadCSV() {
+        let scores = JSON.parse(localStorage.getItem('monocyte_game_scores') || '[]');
+        if (scores.length === 0) {
+            showToast("⚠️ Tidak ada data skor untuk diunduh!");
+            return;
+        }
+
+        let csvContent = "\uFEFFPeringkat,Nama Siswa,Skor Akhir,Tanggal Main\n";
+        scores.forEach((item, index) => {
+            csvContent += `${index + 1},"${item.name.replace(/"/g, '""')}",${item.score},"${item.date}"\n`;
+        });
+
+        let blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        let url = URL.createObjectURL(blob);
+        let a = document.createElement('a');
+        a.href = url;
+        a.download = `Rekap_Nilai_MonocyteJourney_${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        showToast("📥 File CSV berhasil diunduh! Siap dibuka di Excel / GSheet.");
+    }
+
+    /* ==========================================================================
+       9. UTILITIES & TOAST NOTIFICATION
+       ========================================================================== */
+
+    function showToast(message) {
+        let toast = document.getElementById('toast');
+        toast.innerText = message;
+        toast.classList.add('show');
+        setTimeout(() => {
+            toast.classList.remove('show');
+        }, 3000);
+    }
+
+    function escapeHTML(str) {
+        return str.replace(/[&<>'"]/g, 
+            tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+        );
+    }
+
+    // Initial Background Animation Preview
+    initErythrocytes();
+</script>
+</body>
+</html>
